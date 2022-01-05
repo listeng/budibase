@@ -30,6 +30,7 @@
   // Provider state
   let rows = []
   let allRows = []
+  let info = {}
   let schema = {}
   let bookmarks = [null]
   let pageNumber = 0
@@ -120,8 +121,9 @@
   // Build our data context
   $: dataContext = {
     rows,
+    info,
     schema,
-    rowsLength: rows.length,
+    rowsLength: rows?.length,
 
     // Undocumented properties. These aren't supposed to be used in builder
     // bindings, but are used internally by other components
@@ -194,9 +196,12 @@
       // For providers referencing another provider, just use the rows it
       // provides
       allRows = dataSource?.value?.rows || []
-    } else if (dataSource?.type === "field") {
-      // Field sources will be available from context.
-      // Enrich non object elements into object to ensure a valid schema.
+    } else if (
+      dataSource?.type === "field" ||
+      dataSource?.type === "jsonarray"
+    ) {
+      // These sources will be available directly from context.
+      // Enrich non object elements into objects to ensure a valid schema.
       const data = dataSource?.value || []
       if (Array.isArray(data) && data[0] && typeof data[0] !== "object") {
         allRows = data.map(value => ({ value }))
@@ -206,7 +211,9 @@
     } else {
       // For other data sources like queries or views, fetch all rows from the
       // server
-      allRows = await API.fetchDatasource(dataSource)
+      const data = await API.fetchDatasource(dataSource)
+      allRows = data.rows
+      info = data.info
     }
     loading = false
     loaded = true
